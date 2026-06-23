@@ -45,6 +45,12 @@ func New() *Api {
 	return a
 }
 
+// Handler returns the HTTP handler with all routes wired up. It is the same
+// handler served by Run, exposed so the full stack can be driven in tests.
+func (a *Api) Handler() http.Handler {
+	return a.router
+}
+
 func (a *Api) Run(ctx context.Context, addr string) error {
 	httpServer := &http.Server{
 		Addr:        addr,
