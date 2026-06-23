@@ -1,12 +1,12 @@
 package models
 
 type PostPaymentRequest struct {
-	CardNumberLastFour int    `json:"card_number_last_four"`
-	ExpiryMonth        int    `json:"expiry_month"`
-	ExpiryYear         int    `json:"expiry_year"`
-	Currency           string `json:"currency"`
-	Amount             int    `json:"amount"`
-	Cvv                int    `json:"cvv"`
+	CardNumber  string `json:"card_number"`
+	ExpiryMonth int    `json:"expiry_month"`
+	ExpiryYear  int    `json:"expiry_year"`
+	Currency    string `json:"currency"`
+	Amount      int    `json:"amount"`
+	Cvv         string `json:"cvv"`
 }
 
 type PaymentResponse struct {
@@ -17,4 +17,9 @@ type PaymentResponse struct {
 	ExpiryYear         int    `json:"expiry_year"`
 	Currency           string `json:"currency"`
 	Amount             int    `json:"amount"`
+}
+
+type PostPaymentErrorResponse struct {
+	PaymentStatus string `json:"payment_status"`
+	Error         string `json:"error"`
 }

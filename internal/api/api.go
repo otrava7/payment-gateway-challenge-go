@@ -19,6 +19,7 @@ import (
 // acquiring bank for processing payments — without changing this package.
 type PaymentsService interface {
 	GetPayment(id string) *models.PaymentResponse
+	CreatePayment(req models.PostPaymentRequest) (*models.PaymentResponse, error)
 }
 
 type Api struct {
@@ -70,4 +71,5 @@ func (a *Api) setupRouter() {
 	a.router.Get("/swagger/*", a.SwaggerHandler())
 
 	a.router.Get("/api/payments/{id}", a.GetPaymentHandler())
+	a.router.Post("/api/payments", a.PostPaymentHandler())
 }
