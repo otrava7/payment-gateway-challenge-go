@@ -24,7 +24,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/main.Pong"
+                            "$ref": "#/definitions/api.pong"
                         }
                     }
                 }
@@ -32,7 +32,7 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "main.Pong": {
+        "api.pong": {
             "type": "object",
             "properties": {
                 "message": {

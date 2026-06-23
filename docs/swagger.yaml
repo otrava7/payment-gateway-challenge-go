@@ -1,11 +1,11 @@
 basePath: /
 definitions:
-  main.Pong:
+  api.pong:
     properties:
       message:
         type: string
     type: object
-host: localhost:8089
+host: localhost:8090
 info:
   contact: {}
   description: Interview challenge for building a Payment Gateway - Go version
@@ -19,7 +19,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/main.Pong'
+            $ref: '#/definitions/api.pong'
 securityDefinitions:
   BasicAuth:
     type: basic

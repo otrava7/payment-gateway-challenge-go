@@ -17,7 +17,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/main.Pong"
+                            "$ref": "#/definitions/api.pong"
                         }
                     }
                 }
@@ -25,7 +25,7 @@
         }
     },
     "definitions": {
-        "main.Pong": {
+        "api.pong": {
             "type": "object",
             "properties": {
                 "message": {
