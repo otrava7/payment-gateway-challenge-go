@@ -12,7 +12,7 @@ import (
 )
 
 func TestGetPaymentHandler(t *testing.T) {
-	payment := models.PostPaymentResponse{
+	payment := models.PaymentResponse{
 		Id:                 "test-id",
 		PaymentStatus:      "test-successful-status",
 		CardNumberLastFour: 1234,

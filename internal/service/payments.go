@@ -20,11 +20,11 @@ func NewPaymentsService() *PaymentsService {
 
 // GetPayment retrieves a payment record by its ID. It returns nil when no
 // payment with the given ID exists.
-func (s *PaymentsService) GetPayment(id string) *models.PostPaymentResponse {
+func (s *PaymentsService) GetPayment(id string) *models.PaymentResponse {
 	return s.storage.GetPayment(id)
 }
 
 // AddPayment persists a payment record.
-func (s *PaymentsService) AddPayment(payment models.PostPaymentResponse) {
+func (s *PaymentsService) AddPayment(payment models.PaymentResponse) {
 	s.storage.AddPayment(payment)
 }
