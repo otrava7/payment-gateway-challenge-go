@@ -5,13 +5,18 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"os"
 
+	"github.com/cko-recruitment/payment-gateway-challenge-go/internal/bank"
 	"github.com/cko-recruitment/payment-gateway-challenge-go/internal/models"
 	"github.com/cko-recruitment/payment-gateway-challenge-go/internal/service"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"golang.org/x/sync/errgroup"
 )
+
+// defaultAcquiringBankURL is where the bank simulator listens (see docker-compose.yml).
+const defaultAcquiringBankURL = "http://localhost:8080"
 
 // PaymentsService describes the business-logic operations the HTTP layer
 // depends on. Defining it here (consumer side) lets the API be tested against a
@@ -28,8 +33,13 @@ type Api struct {
 }
 
 func New() *Api {
+	bankURL := os.Getenv("ACQUIRING_BANK_URL")
+	if bankURL == "" {
+		bankURL = defaultAcquiringBankURL
+	}
+
 	a := &Api{}
-	a.paymentsService = service.NewPaymentsService()
+	a.paymentsService = service.NewPaymentsService(bank.NewClient(bankURL))
 	a.setupRouter()
 
 	return a

@@ -38,7 +38,7 @@ func (a *Api) PostPaymentHandler() http.HandlerFunc {
 			// A body that cannot be decoded is a transport error, not a payment
 			// rule, so the API layer handles it directly.
 			writeJSON(w, http.StatusBadRequest, models.PostPaymentErrorResponse{
-				PaymentStatus: "Rejected",
+				PaymentStatus: models.PaymentStatusRejected,
 				Error:         "invalid request body",
 			})
 			return
@@ -49,13 +49,13 @@ func (a *Api) PostPaymentHandler() http.HandlerFunc {
 			var rejected *service.RejectedError
 			if errors.As(err, &rejected) {
 				writeJSON(w, http.StatusBadRequest, models.PostPaymentErrorResponse{
-					PaymentStatus: "Rejected",
+					PaymentStatus: models.PaymentStatusRejected,
 					Error:         rejected.Reason,
 				})
 				return
 			}
 			writeJSON(w, http.StatusInternalServerError, models.PostPaymentErrorResponse{
-				PaymentStatus: "Rejected",
+				PaymentStatus: models.PaymentStatusRejected,
 				Error:         "could not process payment",
 			})
 			return

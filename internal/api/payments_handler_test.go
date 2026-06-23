@@ -23,6 +23,36 @@ func newTestRouter(svc PaymentsService) *chi.Mux {
 	return r
 }
 
+// mockPaymentsService is a hand-written test double for the PaymentsService
+// interface. It lets the HTTP handlers be tested independently of the real
+// service (and its acquiring-bank HTTP client).
+//
+// Behaviour is configured via the function fields; calls are recorded so tests
+// can assert how the handler invoked the service.
+type mockPaymentsService struct {
+	getPaymentFunc    func(id string) *models.PaymentResponse
+	createPaymentFunc func(req models.PostPaymentRequest) (*models.PaymentResponse, error)
+
+	getPaymentCalls    []string
+	createPaymentCalls []models.PostPaymentRequest
+}
+
+func (m *mockPaymentsService) GetPayment(id string) *models.PaymentResponse {
+	m.getPaymentCalls = append(m.getPaymentCalls, id)
+	if m.getPaymentFunc != nil {
+		return m.getPaymentFunc(id)
+	}
+	return nil
+}
+
+func (m *mockPaymentsService) CreatePayment(req models.PostPaymentRequest) (*models.PaymentResponse, error) {
+	m.createPaymentCalls = append(m.createPaymentCalls, req)
+	if m.createPaymentFunc != nil {
+		return m.createPaymentFunc(req)
+	}
+	return nil, nil
+}
+
 func TestGetPaymentHandler(t *testing.T) {
 	t.Run("Payment found", func(t *testing.T) {
 		payment := &models.PaymentResponse{
@@ -97,7 +127,7 @@ func TestPostPaymentHandler(t *testing.T) {
 
 		var got models.PostPaymentErrorResponse
 		assert.NoError(t, json.NewDecoder(w.Body).Decode(&got))
-		assert.Equal(t, "Rejected", got.PaymentStatus)
+		assert.Equal(t, models.PaymentStatusRejected, got.PaymentStatus)
 		assert.Equal(t, "card number is required", got.Error)
 
 		// The handler must have delegated to the service rather than deciding itself.
@@ -107,7 +137,7 @@ func TestPostPaymentHandler(t *testing.T) {
 	t.Run("Service authorises the payment", func(t *testing.T) {
 		authorised := &models.PaymentResponse{
 			Id:                 "pay-1",
-			PaymentStatus:      "Authorized",
+			PaymentStatus:      models.PaymentStatusAuthorized,
 			CardNumberLastFour: 1234,
 			ExpiryMonth:        10,
 			ExpiryYear:         2035,
@@ -149,7 +179,7 @@ func TestPostPaymentHandler(t *testing.T) {
 
 		var got models.PostPaymentErrorResponse
 		assert.NoError(t, json.NewDecoder(w.Body).Decode(&got))
-		assert.Equal(t, "Rejected", got.PaymentStatus)
+		assert.Equal(t, models.PaymentStatusRejected, got.PaymentStatus)
 
 		// A malformed body must never reach the service.
 		assert.Empty(t, svc.createPaymentCalls)

@@ -8,6 +8,26 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// mockBank is a test double for the AcquiringBank interface. Its behaviour is
+// configured via authorizeFunc and every call is recorded.
+type mockBank struct {
+	authorizeFunc func(req models.PostPaymentRequest) (bool, error)
+	calls         []models.PostPaymentRequest
+}
+
+func (m *mockBank) Authorize(req models.PostPaymentRequest) (bool, error) {
+	m.calls = append(m.calls, req)
+	if m.authorizeFunc != nil {
+		return m.authorizeFunc(req)
+	}
+	return false, nil
+}
+
+// authorizingBank returns a mock bank that authorizes everything.
+func authorizingBank() *mockBank {
+	return &mockBank{authorizeFunc: func(models.PostPaymentRequest) (bool, error) { return true, nil }}
+}
+
 // validRequest returns a payment request that passes every validation rule, so
 // individual tests can mutate a single field to exercise one rule at a time.
 func validRequest() models.PostPaymentRequest {
@@ -42,7 +62,8 @@ func TestCreatePaymentValidation(t *testing.T) {
 			req := validRequest()
 			mutate(&req)
 
-			svc := NewPaymentsService()
+			bank := authorizingBank()
+			svc := NewPaymentsService(bank)
 			payment, err := svc.CreatePayment(req)
 
 			assert.Nil(t, payment)
@@ -50,33 +71,15 @@ func TestCreatePaymentValidation(t *testing.T) {
 			var rejected *RejectedError
 			assert.True(t, errors.As(err, &rejected), "expected a *RejectedError, got %v", err)
 
-			// A rejected payment must not be persisted.
-			assert.Nil(t, svc.GetPayment(""))
+			// A rejected payment must never reach the acquiring bank.
+			assert.Empty(t, bank.calls)
 		})
 	}
-
-	t.Run("valid request is authorised and stored", func(t *testing.T) {
-		svc := NewPaymentsService()
-
-		payment, err := svc.CreatePayment(validRequest())
-
-		assert.NoError(t, err)
-		assert.NotNil(t, payment)
-		assert.NotEmpty(t, payment.Id)
-		assert.Equal(t, "Authorized", payment.PaymentStatus)
-		assert.Equal(t, 1234, payment.CardNumberLastFour)
-		assert.Equal(t, "GBP", payment.Currency)
-		assert.Equal(t, 100, payment.Amount)
-
-		// The processed payment is retrievable by its generated id.
-		stored := svc.GetPayment(payment.Id)
-		assert.Equal(t, payment, stored)
-	})
 
 	t.Run("non-positive amount is not rejected", func(t *testing.T) {
 		// The gateway does not constrain the sign of the amount; it is left to
 		// the acquiring bank to accept or decline it.
-		svc := NewPaymentsService()
+		svc := NewPaymentsService(authorizingBank())
 
 		req := validRequest()
 		req.Amount = -100
@@ -86,5 +89,56 @@ func TestCreatePaymentValidation(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, payment)
 		assert.Equal(t, -100, payment.Amount)
+	})
+}
+
+func TestCreatePaymentAuthorization(t *testing.T) {
+	t.Run("authorized payment is stored", func(t *testing.T) {
+		bank := authorizingBank()
+		svc := NewPaymentsService(bank)
+
+		payment, err := svc.CreatePayment(validRequest())
+
+		assert.NoError(t, err)
+		assert.NotNil(t, payment)
+		assert.NotEmpty(t, payment.Id)
+		assert.Equal(t, models.PaymentStatusAuthorized, payment.PaymentStatus)
+		assert.Equal(t, 1234, payment.CardNumberLastFour)
+		assert.Equal(t, "GBP", payment.Currency)
+		assert.Equal(t, 100, payment.Amount)
+
+		// The validated request was forwarded to the bank, and the resulting
+		// payment is retrievable by its generated id.
+		assert.Len(t, bank.calls, 1)
+		assert.Equal(t, payment, svc.GetPayment(payment.Id))
+	})
+
+	t.Run("declined payment is stored", func(t *testing.T) {
+		bank := &mockBank{authorizeFunc: func(models.PostPaymentRequest) (bool, error) { return false, nil }}
+		svc := NewPaymentsService(bank)
+
+		payment, err := svc.CreatePayment(validRequest())
+
+		assert.NoError(t, err)
+		assert.NotNil(t, payment)
+		assert.Equal(t, models.PaymentStatusDeclined, payment.PaymentStatus)
+
+		// A declined payment is still a created payment and must be retrievable.
+		assert.Equal(t, payment, svc.GetPayment(payment.Id))
+	})
+
+	t.Run("bank failure is not a rejection and is not stored", func(t *testing.T) {
+		bankErr := errors.New("bank unavailable")
+		bank := &mockBank{authorizeFunc: func(models.PostPaymentRequest) (bool, error) { return false, bankErr }}
+		svc := NewPaymentsService(bank)
+
+		payment, err := svc.CreatePayment(validRequest())
+
+		assert.Nil(t, payment)
+		assert.ErrorIs(t, err, bankErr)
+
+		// A bank failure is distinct from a validation rejection.
+		var rejected *RejectedError
+		assert.False(t, errors.As(err, &rejected))
 	})
 }
