@@ -1,12 +1,11 @@
 package service
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"strconv"
 
 	"github.com/cko-recruitment/payment-gateway-challenge-go/internal/models"
 	"github.com/cko-recruitment/payment-gateway-challenge-go/internal/repository"
+	"github.com/google/uuid"
 )
 
 // PaymentsService holds the business logic for payments. It sits between the
@@ -46,7 +45,7 @@ func (s *PaymentsService) CreatePayment(req models.PostPaymentRequest) (*models.
 	}
 
 	payment := models.PaymentResponse{
-		Id:                 newID(),
+		Id:                 uuid.NewString(),
 		PaymentStatus:      "Authorized",
 		CardNumberLastFour: lastFourDigits(req.CardNumber),
 		ExpiryMonth:        req.ExpiryMonth,
@@ -56,14 +55,6 @@ func (s *PaymentsService) CreatePayment(req models.PostPaymentRequest) (*models.
 	}
 	s.storage.AddPayment(payment)
 	return &payment, nil
-}
-
-// newID returns a random hex identifier for a payment.
-func newID() string {
-	b := make([]byte, 16)
-	// crypto/rand.Read never returns an error on the supported platforms.
-	_, _ = rand.Read(b)
-	return hex.EncodeToString(b)
 }
 
 // lastFourDigits returns the last four digits of a card number as an integer.
