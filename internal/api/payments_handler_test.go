@@ -1,4 +1,4 @@
-package handlers
+package api
 
 import (
 	"net/http"
@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/cko-recruitment/payment-gateway-challenge-go/internal/models"
-	"github.com/cko-recruitment/payment-gateway-challenge-go/internal/repository"
+	"github.com/cko-recruitment/payment-gateway-challenge-go/internal/service"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 )
@@ -21,22 +21,13 @@ func TestGetPaymentHandler(t *testing.T) {
 		Currency:           "GBP",
 		Amount:             100,
 	}
-	ps := repository.NewPaymentsRepository()
-	ps.AddPayment(payment)
+	svc := service.NewPaymentsService()
+	svc.AddPayment(payment)
 
-	payments := NewPaymentsHandler(ps)
+	a := &Api{paymentsService: svc}
 
 	r := chi.NewRouter()
-	r.Get("/api/payments/{id}", payments.GetHandler())
-
-	httpServer := &http.Server{
-		Addr:    ":8091",
-		Handler: r,
-	}
-
-	go func() error {
-		return httpServer.ListenAndServe()
-	}()
+	r.Get("/api/payments/{id}", a.GetPaymentHandler())
 
 	t.Run("PaymentFound", func(t *testing.T) {
 		// Create a new HTTP request for testing
