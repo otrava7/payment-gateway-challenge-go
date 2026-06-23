@@ -1,62 +1,65 @@
 package api
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/cko-recruitment/payment-gateway-challenge-go/internal/models"
-	"github.com/cko-recruitment/payment-gateway-challenge-go/internal/service"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestGetPaymentHandler(t *testing.T) {
-	payment := models.PaymentResponse{
-		Id:                 "test-id",
-		PaymentStatus:      "test-successful-status",
-		CardNumberLastFour: 1234,
-		ExpiryMonth:        10,
-		ExpiryYear:         2035,
-		Currency:           "GBP",
-		Amount:             100,
-	}
-	svc := service.NewPaymentsService()
-	svc.AddPayment(payment)
-
+// newTestRouter wires a router to the payments handlers of an Api backed by the
+// given (mock) service, so the HTTP layer can be exercised in isolation.
+func newTestRouter(svc PaymentsService) *chi.Mux {
 	a := &Api{paymentsService: svc}
-
 	r := chi.NewRouter()
 	r.Get("/api/payments/{id}", a.GetPaymentHandler())
+	return r
+}
 
+func TestGetPaymentHandler(t *testing.T) {
 	t.Run("PaymentFound", func(t *testing.T) {
-		// Create a new HTTP request for testing
-		req, _ := http.NewRequest("GET", "/api/payments/test-id", nil)
-
-		// Create a new HTTP request recorder for recording the response
-		w := httptest.NewRecorder()
-
-		r.ServeHTTP(w, req)
-
-		// Check the body is not nil
-		assert.NotNil(t, w.Body)
-
-		// Check the HTTP status code in the response
-		if status := w.Code; status != http.StatusOK {
-			t.Errorf("handler returned wrong status code: got %v want %v",
-				status, http.StatusOK)
+		payment := &models.PaymentResponse{
+			Id:                 "test-id",
+			PaymentStatus:      "test-successful-status",
+			CardNumberLastFour: 1234,
+			ExpiryMonth:        10,
+			ExpiryYear:         2035,
+			Currency:           "GBP",
+			Amount:             100,
 		}
-	})
-	t.Run("PaymentNotFound", func(t *testing.T) {
-		// Create a new HTTP request for testing with a non-existing payment ID
-		req, _ := http.NewRequest("GET", "/api/payments/NonExistingID", nil)
+		svc := &mockPaymentsService{
+			getPaymentFunc: func(id string) *models.PaymentResponse { return payment },
+		}
 
-		// Create a new HTTP request recorder for recording the response
+		req := httptest.NewRequest(http.MethodGet, "/api/payments/test-id", nil)
 		w := httptest.NewRecorder()
+		newTestRouter(svc).ServeHTTP(w, req)
 
-		r.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusOK, w.Code)
+		assert.Equal(t, "application/json", w.Header().Get("Content-Type"))
 
-		// Check the HTTP status code in the response
+		var got models.PaymentResponse
+		assert.NoError(t, json.NewDecoder(w.Body).Decode(&got))
+		assert.Equal(t, *payment, got)
+
+		// The handler should have looked the payment up by the URL id.
+		assert.Equal(t, []string{"test-id"}, svc.getPaymentCalls)
+	})
+
+	t.Run("PaymentNotFound", func(t *testing.T) {
+		svc := &mockPaymentsService{
+			getPaymentFunc: func(id string) *models.PaymentResponse { return nil },
+		}
+
+		req := httptest.NewRequest(http.MethodGet, "/api/payments/NonExistingID", nil)
+		w := httptest.NewRecorder()
+		newTestRouter(svc).ServeHTTP(w, req)
+
 		assert.Equal(t, http.StatusNotFound, w.Code)
+		assert.Equal(t, []string{"NonExistingID"}, svc.getPaymentCalls)
 	})
 }

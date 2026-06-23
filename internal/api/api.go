@@ -6,15 +6,24 @@ import (
 	"net"
 	"net/http"
 
+	"github.com/cko-recruitment/payment-gateway-challenge-go/internal/models"
 	"github.com/cko-recruitment/payment-gateway-challenge-go/internal/service"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"golang.org/x/sync/errgroup"
 )
 
+// PaymentsService describes the business-logic operations the HTTP layer
+// depends on. Defining it here (consumer side) lets the API be tested against a
+// mock and lets the concrete implementation grow — e.g. an HTTP client to an
+// acquiring bank for processing payments — without changing this package.
+type PaymentsService interface {
+	GetPayment(id string) *models.PaymentResponse
+}
+
 type Api struct {
 	router          *chi.Mux
-	paymentsService *service.PaymentsService
+	paymentsService PaymentsService
 }
 
 func New() *Api {
