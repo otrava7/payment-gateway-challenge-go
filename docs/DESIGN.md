@@ -16,7 +16,7 @@ HTTP request → api → service → bank (acquiring bank, HTTP)
 - **`api`** owns HTTP concerns only: routing, decoding, and mapping a domain
   outcome to a status code and body. It contains no payment rules.
 - **`service`** owns the business logic: validation and the orchestration of
-  *validate → authorize → store*.
+  _validate → authorize → store_.
 - **`bank`** owns the acquiring-bank protocol: the HTTP call and the translation
   between our domain model and the bank's wire format.
 - **`repository`** owns storage.
@@ -29,7 +29,7 @@ dependencies pointing inward and makes every layer testable in isolation.
 ## Where validation lives
 
 Payment validation lives in the **service**, not the HTTP layer. A failed rule is
-a *domain outcome* (the payment is **Rejected** and not forwarded to the bank),
+a _domain outcome_ (the payment is **Rejected** and not forwarded to the bank),
 not a transport error — so the service is the single source of truth for "what
 makes a valid payment", and the handler simply maps the result to HTTP.
 
@@ -40,13 +40,13 @@ all: that is a genuine transport error, so the handler rejects it directly.
 
 Three outcomes, matching the requirements:
 
-| Outcome | Meaning | HTTP | Stored? |
-| --- | --- | --- | --- |
-| `Authorized` | Bank authorized the payment | `201` | Yes |
-| `Declined` | Bank declined the payment | `201` | Yes |
-| `Rejected` | Failed validation, never sent to the bank | `400` | No |
+| Outcome      | Meaning                                   | HTTP  | Stored? |
+| ------------ | ----------------------------------------- | ----- | ------- |
+| `Authorized` | Bank authorized the payment               | `201` | Yes     |
+| `Declined`   | Bank declined the payment                 | `201` | Yes     |
+| `Rejected`   | Failed validation, never sent to the bank | `400` | No      |
 
-`Authorized` and `Declined` are both *created payments* — real outcomes of a bank
+`Authorized` and `Declined` are both _created payments_ — real outcomes of a bank
 call — so both are stored and retrievable. `Rejected` means no payment could be
 created, so there is nothing to retrieve. `PaymentStatus` is modelled as a typed
 enum in `models` rather than bare strings, so the values live in one place.
@@ -68,7 +68,7 @@ underlying cause — the caller gets an opaque message, operators get the detail
   deeper in the stack — so one payment can be traced end to end.
 - **Context propagation**: `context.Context` flows from the HTTP request through
   the service to the bank's HTTP call (`http.NewRequestWithContext`). This is
-  threaded through *all* service methods for consistency, enabling cancellation,
+  threaded through _all_ service methods for consistency, enabling cancellation,
   deadlines, and future tracing.
 - **PCI-DSS**: the full card number and CVV are never logged or returned. Only the
   last four digits, status, amount and currency appear in logs and responses.
@@ -113,8 +113,6 @@ Where the requirements were open to interpretation:
 - **Amount sign is not constrained.** The requirement only states the amount must
   be required and an integer, so the gateway does not reject zero or negative
   amounts — whether such an amount is acceptable is left to the acquiring bank.
-  Refunds are treated as a separate, future operation rather than a negative
-  payment.
 - **`Rejected` HTTP shape**: a rejected payment returns `400` with a
   `payment_status` of `Rejected` and an `error` message describing the failed
   rule. The requirements define `Rejected` as an outcome but not its exact HTTP
