@@ -18,17 +18,29 @@ var (
 	date    = "unknown"
 )
 
-//	@title			Payment Gateway Challenge Go
-//	@description	Interview challenge for building a Payment Gateway - Go version
+// defaultAddr is the address the HTTP server binds to when ADDR is not set.
+const defaultAddr = ":8090"
+
+//	@title			Payment Gateway API
+//	@version		1.0
+//	@description	Processes card payments through an acquiring bank and retrieves previously made payments.
+//	@description	A payment ends in one of three states: Authorized, Declined, or Rejected (failed validation, never sent to the bank).
 
 //	@host		localhost:8090
 //	@BasePath	/
+//	@schemes	http
 
-// @securityDefinitions.basic	BasicAuth
+//	@tag.name			payments
+//	@tag.description	Process and retrieve card payments
 func main() {
 	slog.SetDefault(logging.New(os.Stdout))
 	slog.Info("starting payment gateway", "version", version, "commit", commit, "date", date)
 	docs.SwaggerInfo.Version = version
+	// The @host annotation bakes in a default; override it at runtime so the
+	// Swagger UI points at wherever the service is actually reachable.
+	if host := os.Getenv("SWAGGER_HOST"); host != "" {
+		docs.SwaggerInfo.Host = host
+	}
 
 	if err := run(); err != nil {
 		slog.Error("fatal API error", "error", err)
@@ -56,8 +68,13 @@ func run() error {
 		}
 	}()
 
+	addr := os.Getenv("ADDR")
+	if addr == "" {
+		addr = defaultAddr
+	}
+
 	api := api.New()
-	if err := api.Run(ctx, ":8090"); err != nil {
+	if err := api.Run(ctx, addr); err != nil {
 		return err
 	}
 

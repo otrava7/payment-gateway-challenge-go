@@ -8,57 +8,87 @@ definitions:
   models.PaymentResponse:
     properties:
       amount:
+        description: Amount in the minor currency unit, e.g. 1050 = £10.50.
         type: integer
       card_number_last_four:
+        description: CardNumberLastFour is the last four digits of the card used.
         type: integer
       currency:
+        description: Currency is the ISO currency code of the payment.
         type: string
       expiry_month:
+        description: ExpiryMonth of the card, 1–12.
         type: integer
       expiry_year:
+        description: ExpiryYear of the card.
         type: integer
       id:
+        description: Id is the gateway-assigned payment id (a GUID), used to retrieve
+          the payment.
         type: string
       payment_status:
-        $ref: '#/definitions/models.PaymentStatus'
+        description: 'PaymentStatus is the outcome of a created payment: Authorized
+          or Declined.'
+        enum:
+        - Authorized
+        - Declined
+        type: string
     type: object
-  models.PaymentStatus:
-    enum:
-    - Authorized
-    - Declined
-    - Rejected
-    type: string
-    x-enum-varnames:
-    - PaymentStatusAuthorized
-    - PaymentStatusDeclined
-    - PaymentStatusRejected
   models.PostPaymentErrorResponse:
     properties:
       error:
+        description: Error is a human-readable description of why the request could
+          not be processed.
         type: string
       payment_status:
-        $ref: '#/definitions/models.PaymentStatus'
+        description: PaymentStatus is always "Rejected" for an error response.
+        enum:
+        - Rejected
+        type: string
     type: object
   models.PostPaymentRequest:
     properties:
       amount:
+        description: Amount in the minor currency unit, e.g. 1050 = £10.50.
+        example: 1050
         type: integer
       card_number:
+        description: 'Card number: 14–19 characters, digits only.'
+        example: "2222405343248877"
         type: string
       currency:
+        description: ISO currency code; must be one of USD, GBP, EUR.
+        example: GBP
         type: string
       cvv:
+        description: 'Card verification value: 3–4 characters, digits only.'
+        example: "123"
         type: string
       expiry_month:
+        description: Expiry month, 1–12. The month/year combination must be in the
+          future.
+        example: 4
         type: integer
       expiry_year:
+        description: Expiry year. The month/year combination must be in the future.
+        example: 2030
         type: integer
+    required:
+    - amount
+    - card_number
+    - currency
+    - cvv
+    - expiry_month
+    - expiry_year
     type: object
 host: localhost:8090
 info:
   contact: {}
-  description: Interview challenge for building a Payment Gateway - Go version
-  title: Payment Gateway Challenge Go
+  description: |-
+    Processes card payments through an acquiring bank and retrieves previously made payments.
+    A payment ends in one of three states: Authorized, Declined, or Rejected (failed validation, never sent to the bank).
+  title: Payment Gateway API
+  version: "1.0"
 paths:
   /api/payments:
     post:
@@ -121,7 +151,9 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/api.pong'
-securityDefinitions:
-  BasicAuth:
-    type: basic
+schemes:
+- http
 swagger: "2.0"
+tags:
+- description: Process and retrieve card payments
+  name: payments

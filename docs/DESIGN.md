@@ -104,6 +104,18 @@ tagged release GoReleaser stamps them; `make build` stamps the same values from
 git for local and CI builds, so a running binary always reports its identity (and
 emits it on startup). Unstamped `go run` builds correctly show the `dev` defaults.
 
+## Configuration
+
+Runtime configuration is via environment variables (`ADDR`, `ACQUIRING_BANK_URL`,
+`SWAGGER_HOST`), each defaulting to a value that works for local development, so
+the service runs with zero configuration but is deployable without code changes.
+
+`SWAGGER_HOST` is deliberately separate from `ADDR`: the address the server
+*binds* to is not necessarily the host clients *reach* it on (behind a proxy or
+in a container they differ), so the Swagger UI's advertised host is its own knob.
+It defaults to the value baked into the `@host` annotation and is overridden at
+startup, mirroring how the build version is injected into the spec.
+
 ## Assumptions
 
 Where the requirements were open to interpretation:

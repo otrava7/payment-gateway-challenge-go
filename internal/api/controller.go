@@ -32,5 +32,15 @@ func (a *Api) PingHandler() http.HandlerFunc {
 func (a *Api) SwaggerHandler() http.HandlerFunc {
 	return httpSwagger.Handler(
 		httpSwagger.URL(fmt.Sprintf("http://%s/swagger/doc.json", docs.SwaggerInfo.Host)),
+		// Render request/response bodies as the annotated schema (with field
+		// descriptions and validation constraints) by default, rather than the
+		// bare example JSON, and expand it so the fields are visible without extra
+		// clicks. The standalone Models section is hidden (-1); schemas are shown
+		// inline on each operation instead.
+		httpSwagger.UIConfig(map[string]string{
+			"defaultModelRendering":    `"model"`,
+			"defaultModelExpandDepth":  "3",
+			"defaultModelsExpandDepth": "-1",
+		}),
 	)
 }

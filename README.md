@@ -24,8 +24,15 @@ make build
 ./bin/payment-gateway
 ```
 
-The acquiring-bank URL defaults to `http://localhost:8080` and can be overridden
-with the `ACQUIRING_BANK_URL` environment variable.
+### Configuration
+
+All configuration is via environment variables, each with a sensible default:
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `ADDR` | `:8090` | Address the HTTP server binds to. |
+| `ACQUIRING_BANK_URL` | `http://localhost:8080` | Base URL of the acquiring bank. |
+| `SWAGGER_HOST` | `localhost:8090` | Host the Swagger UI targets for "Try it out" (override when deployed or behind a proxy). |
 
 ## API
 

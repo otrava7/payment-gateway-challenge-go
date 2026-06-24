@@ -122,91 +122,115 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "amount": {
+                    "description": "Amount in the minor currency unit, e.g. 1050 = £10.50.",
                     "type": "integer"
                 },
                 "card_number_last_four": {
+                    "description": "CardNumberLastFour is the last four digits of the card used.",
                     "type": "integer"
                 },
                 "currency": {
+                    "description": "Currency is the ISO currency code of the payment.",
                     "type": "string"
                 },
                 "expiry_month": {
+                    "description": "ExpiryMonth of the card, 1–12.",
                     "type": "integer"
                 },
                 "expiry_year": {
+                    "description": "ExpiryYear of the card.",
                     "type": "integer"
                 },
                 "id": {
+                    "description": "Id is the gateway-assigned payment id (a GUID), used to retrieve the payment.",
                     "type": "string"
                 },
                 "payment_status": {
-                    "$ref": "#/definitions/models.PaymentStatus"
+                    "description": "PaymentStatus is the outcome of a created payment: Authorized or Declined.",
+                    "type": "string",
+                    "enum": [
+                        "Authorized",
+                        "Declined"
+                    ]
                 }
             }
-        },
-        "models.PaymentStatus": {
-            "type": "string",
-            "enum": [
-                "Authorized",
-                "Declined",
-                "Rejected"
-            ],
-            "x-enum-varnames": [
-                "PaymentStatusAuthorized",
-                "PaymentStatusDeclined",
-                "PaymentStatusRejected"
-            ]
         },
         "models.PostPaymentErrorResponse": {
             "type": "object",
             "properties": {
                 "error": {
+                    "description": "Error is a human-readable description of why the request could not be processed.",
                     "type": "string"
                 },
                 "payment_status": {
-                    "$ref": "#/definitions/models.PaymentStatus"
+                    "description": "PaymentStatus is always \"Rejected\" for an error response.",
+                    "type": "string",
+                    "enum": [
+                        "Rejected"
+                    ]
                 }
             }
         },
         "models.PostPaymentRequest": {
             "type": "object",
+            "required": [
+                "amount",
+                "card_number",
+                "currency",
+                "cvv",
+                "expiry_month",
+                "expiry_year"
+            ],
             "properties": {
                 "amount": {
-                    "type": "integer"
+                    "description": "Amount in the minor currency unit, e.g. 1050 = £10.50.",
+                    "type": "integer",
+                    "example": 1050
                 },
                 "card_number": {
-                    "type": "string"
+                    "description": "Card number: 14–19 characters, digits only.",
+                    "type": "string",
+                    "example": "2222405343248877"
                 },
                 "currency": {
-                    "type": "string"
+                    "description": "ISO currency code; must be one of USD, GBP, EUR.",
+                    "type": "string",
+                    "example": "GBP"
                 },
                 "cvv": {
-                    "type": "string"
+                    "description": "Card verification value: 3–4 characters, digits only.",
+                    "type": "string",
+                    "example": "123"
                 },
                 "expiry_month": {
-                    "type": "integer"
+                    "description": "Expiry month, 1–12. The month/year combination must be in the future.",
+                    "type": "integer",
+                    "example": 4
                 },
                 "expiry_year": {
-                    "type": "integer"
+                    "description": "Expiry year. The month/year combination must be in the future.",
+                    "type": "integer",
+                    "example": 2030
                 }
             }
         }
     },
-    "securityDefinitions": {
-        "BasicAuth": {
-            "type": "basic"
+    "tags": [
+        {
+            "description": "Process and retrieve card payments",
+            "name": "payments"
         }
-    }
+    ]
 }`
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "",
+	Version:          "1.0",
 	Host:             "localhost:8090",
 	BasePath:         "/",
-	Schemes:          []string{},
-	Title:            "Payment Gateway Challenge Go",
-	Description:      "Interview challenge for building a Payment Gateway - Go version",
+	Schemes:          []string{"http"},
+	Title:            "Payment Gateway API",
+	Description:      "Processes card payments through an acquiring bank and retrieves previously made payments.\nA payment ends in one of three states: Authorized, Declined, or Rejected (failed validation, never sent to the bank).",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",
