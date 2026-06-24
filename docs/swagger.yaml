@@ -5,12 +5,113 @@ definitions:
       message:
         type: string
     type: object
+  models.PaymentResponse:
+    properties:
+      amount:
+        type: integer
+      card_number_last_four:
+        type: integer
+      currency:
+        type: string
+      expiry_month:
+        type: integer
+      expiry_year:
+        type: integer
+      id:
+        type: string
+      payment_status:
+        $ref: '#/definitions/models.PaymentStatus'
+    type: object
+  models.PaymentStatus:
+    enum:
+    - Authorized
+    - Declined
+    - Rejected
+    type: string
+    x-enum-varnames:
+    - PaymentStatusAuthorized
+    - PaymentStatusDeclined
+    - PaymentStatusRejected
+  models.PostPaymentErrorResponse:
+    properties:
+      error:
+        type: string
+      payment_status:
+        $ref: '#/definitions/models.PaymentStatus'
+    type: object
+  models.PostPaymentRequest:
+    properties:
+      amount:
+        type: integer
+      card_number:
+        type: string
+      currency:
+        type: string
+      cvv:
+        type: string
+      expiry_month:
+        type: integer
+      expiry_year:
+        type: integer
+    type: object
 host: localhost:8090
 info:
   contact: {}
   description: Interview challenge for building a Payment Gateway - Go version
   title: Payment Gateway Challenge Go
 paths:
+  /api/payments:
+    post:
+      consumes:
+      - application/json
+      description: Validates a payment and, if valid, forwards it to the acquiring
+        bank for authorization.
+      parameters:
+      - description: Payment to process
+        in: body
+        name: payment
+        required: true
+        schema:
+          $ref: '#/definitions/models.PostPaymentRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Authorized or Declined
+          schema:
+            $ref: '#/definitions/models.PaymentResponse'
+        "400":
+          description: 'Rejected: invalid request'
+          schema:
+            $ref: '#/definitions/models.PostPaymentErrorResponse'
+        "500":
+          description: Payment could not be processed
+          schema:
+            $ref: '#/definitions/models.PostPaymentErrorResponse'
+      summary: Process a payment
+      tags:
+      - payments
+  /api/payments/{id}:
+    get:
+      description: Returns a previously processed payment by its id.
+      parameters:
+      - description: Payment ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.PaymentResponse'
+        "404":
+          description: Payment not found
+      summary: Retrieve a payment
+      tags:
+      - payments
   /ping:
     get:
       produces:

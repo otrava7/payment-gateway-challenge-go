@@ -15,6 +15,84 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/api/payments": {
+            "post": {
+                "description": "Validates a payment and, if valid, forwards it to the acquiring bank for authorization.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "payments"
+                ],
+                "summary": "Process a payment",
+                "parameters": [
+                    {
+                        "description": "Payment to process",
+                        "name": "payment",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.PostPaymentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Authorized or Declined",
+                        "schema": {
+                            "$ref": "#/definitions/models.PaymentResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Rejected: invalid request",
+                        "schema": {
+                            "$ref": "#/definitions/models.PostPaymentErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Payment could not be processed",
+                        "schema": {
+                            "$ref": "#/definitions/models.PostPaymentErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/payments/{id}": {
+            "get": {
+                "description": "Returns a previously processed payment by its id.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "payments"
+                ],
+                "summary": "Retrieve a payment",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Payment ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.PaymentResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Payment not found"
+                    }
+                }
+            }
+        },
         "/ping": {
             "get": {
                 "produces": [
@@ -37,6 +115,79 @@ const docTemplate = `{
             "properties": {
                 "message": {
                     "type": "string"
+                }
+            }
+        },
+        "models.PaymentResponse": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "integer"
+                },
+                "card_number_last_four": {
+                    "type": "integer"
+                },
+                "currency": {
+                    "type": "string"
+                },
+                "expiry_month": {
+                    "type": "integer"
+                },
+                "expiry_year": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "payment_status": {
+                    "$ref": "#/definitions/models.PaymentStatus"
+                }
+            }
+        },
+        "models.PaymentStatus": {
+            "type": "string",
+            "enum": [
+                "Authorized",
+                "Declined",
+                "Rejected"
+            ],
+            "x-enum-varnames": [
+                "PaymentStatusAuthorized",
+                "PaymentStatusDeclined",
+                "PaymentStatusRejected"
+            ]
+        },
+        "models.PostPaymentErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string"
+                },
+                "payment_status": {
+                    "$ref": "#/definitions/models.PaymentStatus"
+                }
+            }
+        },
+        "models.PostPaymentRequest": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "integer"
+                },
+                "card_number": {
+                    "type": "string"
+                },
+                "currency": {
+                    "type": "string"
+                },
+                "cvv": {
+                    "type": "string"
+                },
+                "expiry_month": {
+                    "type": "integer"
+                },
+                "expiry_year": {
+                    "type": "integer"
                 }
             }
         }

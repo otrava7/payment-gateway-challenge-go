@@ -9,12 +9,16 @@ LDFLAGS := -X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.date=$(DA
 
 BINARY := bin/payment-gateway
 
-.PHONY: build vet test e2e clean
+.PHONY: build vet test e2e docs clean
 
 ## build: compile the stamped binary into ./bin
 build:
 	@mkdir -p bin
 	go build -ldflags "$(LDFLAGS)" -o $(BINARY) .
+
+## docs: regenerate the swagger docs from the handler annotations
+docs:
+	swag init -g main.go --parseInternal
 
 ## vet: run go vet across all packages
 vet:

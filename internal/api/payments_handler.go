@@ -13,7 +13,15 @@ import (
 
 // GetPaymentHandler returns an http.HandlerFunc that handles Payments GET requests.
 // It retrieves a payment record by its ID from the payments service.
-// The ID is expected to be part of the URL.
+//
+//	@Summary			Retrieve a payment
+//	@Description	Returns a previously processed payment by its id.
+//	@Tags					payments
+//	@Produce			json
+//	@Param				id	path		string	true	"Payment ID"
+//	@Success			200	{object}	models.PaymentResponse
+//	@Failure			404	"Payment not found"
+//	@Router				/api/payments/{id} [get]
 func (a *Api) GetPaymentHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := chi.URLParam(r, "id")
@@ -32,6 +40,17 @@ func (a *Api) GetPaymentHandler() http.HandlerFunc {
 // It decodes the request and delegates processing to the payments service,
 // mapping the service's outcome to an HTTP response. The payment rules
 // themselves live in the service, not here.
+//
+//	@Summary			Process a payment
+//	@Description	Validates a payment and, if valid, forwards it to the acquiring bank for authorization.
+//	@Tags					payments
+//	@Accept				json
+//	@Produce			json
+//	@Param				payment	body		models.PostPaymentRequest		true	"Payment to process"
+//	@Success			201		{object}	models.PaymentResponse			"Authorized or Declined"
+//	@Failure			400		{object}	models.PostPaymentErrorResponse	"Rejected: invalid request"
+//	@Failure			500		{object}	models.PostPaymentErrorResponse	"Payment could not be processed"
+//	@Router				/api/payments [post]
 func (a *Api) PostPaymentHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req models.PostPaymentRequest
