@@ -1,6 +1,7 @@
 package bank
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -37,7 +38,7 @@ func TestClientAuthorize(t *testing.T) {
 		}))
 		defer server.Close()
 
-		authorized, err := NewClient(server.URL).Authorize(validRequest())
+		authorized, err := NewClient(server.URL).Authorize(context.Background(), validRequest())
 
 		assert.NoError(t, err)
 		assert.True(t, authorized)
@@ -56,7 +57,7 @@ func TestClientAuthorize(t *testing.T) {
 		}))
 		defer server.Close()
 
-		authorized, err := NewClient(server.URL).Authorize(validRequest())
+		authorized, err := NewClient(server.URL).Authorize(context.Background(), validRequest())
 
 		assert.NoError(t, err)
 		assert.False(t, authorized)
@@ -68,7 +69,7 @@ func TestClientAuthorize(t *testing.T) {
 		}))
 		defer server.Close()
 
-		authorized, err := NewClient(server.URL).Authorize(validRequest())
+		authorized, err := NewClient(server.URL).Authorize(context.Background(), validRequest())
 
 		assert.Error(t, err)
 		assert.False(t, authorized)

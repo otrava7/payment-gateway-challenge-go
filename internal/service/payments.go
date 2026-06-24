@@ -1,7 +1,9 @@
 package service
 
 import (
+	"context"
 	"fmt"
+	"log/slog"
 	"strconv"
 
 	"github.com/cko-recruitment/payment-gateway-challenge-go/internal/models"
@@ -15,7 +17,7 @@ import (
 // payment). It is defined here, consumer side, so the service can be tested with
 // a fake bank.
 type AcquiringBank interface {
-	Authorize(req models.PostPaymentRequest) (authorized bool, err error)
+	Authorize(ctx context.Context, req models.PostPaymentRequest) (authorized bool, err error)
 }
 
 // PaymentsService holds the business logic for payments. It sits between the
@@ -36,8 +38,9 @@ func NewPaymentsService(bank AcquiringBank) *PaymentsService {
 }
 
 // GetPayment retrieves a payment record by its ID. It returns nil when no
-// payment with the given ID exists.
-func (s *PaymentsService) GetPayment(id string) *models.PaymentResponse {
+// payment with the given ID exists. The context is accepted for cancellation and
+// request correlation, consistent with the rest of the service API.
+func (s *PaymentsService) GetPayment(_ context.Context, id string) *models.PaymentResponse {
 	return s.storage.GetPayment(id)
 }
 
@@ -53,12 +56,12 @@ func (s *PaymentsService) AddPayment(payment models.PaymentResponse) {
 // A request that breaks a validation rule is rejected with a *RejectedError and
 // never reaches the bank. A failure to reach the bank is returned as a plain
 // error (neither a created payment nor a rejection).
-func (s *PaymentsService) CreatePayment(req models.PostPaymentRequest) (*models.PaymentResponse, error) {
+func (s *PaymentsService) CreatePayment(ctx context.Context, req models.PostPaymentRequest) (*models.PaymentResponse, error) {
 	if err := validate(req); err != nil {
 		return nil, err
 	}
 
-	authorized, err := s.bank.Authorize(req)
+	authorized, err := s.bank.Authorize(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("authorizing payment: %w", err)
 	}
@@ -78,6 +81,17 @@ func (s *PaymentsService) CreatePayment(req models.PostPaymentRequest) (*models.
 		Amount:             req.Amount,
 	}
 	s.storage.AddPayment(payment)
+
+	// Log the outcome with non-sensitive fields only — never the full card
+	// number or CVV (PCI-DSS).
+	slog.InfoContext(ctx, "payment processed",
+		"payment_id", payment.Id,
+		"status", payment.PaymentStatus,
+		"card_last_four", payment.CardNumberLastFour,
+		"currency", payment.Currency,
+		"amount", payment.Amount,
+	)
+
 	return &payment, nil
 }
 

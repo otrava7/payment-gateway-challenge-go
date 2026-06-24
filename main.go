@@ -2,13 +2,14 @@ package main
 
 import (
 	"context"
-	"fmt"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/cko-recruitment/payment-gateway-challenge-go/docs"
 	"github.com/cko-recruitment/payment-gateway-challenge-go/internal/api"
+	"github.com/cko-recruitment/payment-gateway-challenge-go/internal/logging"
 )
 
 var (
@@ -25,12 +26,13 @@ var (
 
 // @securityDefinitions.basic	BasicAuth
 func main() {
-	fmt.Printf("version %s, commit %s, built at %s\n", version, commit, date)
+	slog.SetDefault(logging.New(os.Stdout))
+	slog.Info("starting payment gateway", "version", version, "commit", commit, "date", date)
 	docs.SwaggerInfo.Version = version
 
-	err := run()
-	if err != nil {
-		fmt.Printf("fatal API error: %v\n", err)
+	if err := run(); err != nil {
+		slog.Error("fatal API error", "error", err)
+		os.Exit(1)
 	}
 }
 
@@ -42,14 +44,14 @@ func run() error {
 		c := make(chan os.Signal, 1)
 		signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 		<-c
-		fmt.Printf("sigterm/interrupt signal\n")
+		slog.Info("received shutdown signal")
 		cancel()
 	}()
 
 	defer func() {
 		// recover after panic
 		if x := recover(); x != nil {
-			fmt.Printf("run time panic:\n%v\n", x)
+			slog.Error("run time panic", "panic", x)
 			panic(x)
 		}
 	}()

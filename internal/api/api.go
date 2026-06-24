@@ -2,7 +2,7 @@ package api
 
 import (
 	"context"
-	"fmt"
+	"log/slog"
 	"net"
 	"net/http"
 	"os"
@@ -23,8 +23,8 @@ const defaultAcquiringBankURL = "http://localhost:8080"
 // mock and lets the concrete implementation grow — e.g. an HTTP client to an
 // acquiring bank for processing payments — without changing this package.
 type PaymentsService interface {
-	GetPayment(id string) *models.PaymentResponse
-	CreatePayment(req models.PostPaymentRequest) (*models.PaymentResponse, error)
+	GetPayment(ctx context.Context, id string) *models.PaymentResponse
+	CreatePayment(ctx context.Context, req models.PostPaymentRequest) (*models.PaymentResponse, error)
 }
 
 type Api struct {
@@ -62,12 +62,12 @@ func (a *Api) Run(ctx context.Context, addr string) error {
 
 	g.Go(func() error {
 		<-ctx.Done()
-		fmt.Printf("shutting down HTTP server\n")
+		slog.Info("shutting down HTTP server")
 		return httpServer.Shutdown(ctx)
 	})
 
 	g.Go(func() error {
-		fmt.Printf("starting HTTP server on %s\n", addr)
+		slog.Info("starting HTTP server", "addr", addr)
 		err := httpServer.ListenAndServe()
 		if err != nil && err != http.ErrServerClosed {
 			return err
@@ -81,7 +81,8 @@ func (a *Api) Run(ctx context.Context, addr string) error {
 
 func (a *Api) setupRouter() {
 	a.router = chi.NewRouter()
-	a.router.Use(middleware.Logger)
+	a.router.Use(middleware.RequestID)
+	a.router.Use(requestLogger)
 
 	a.router.Get("/ping", a.PingHandler())
 	a.router.Get("/swagger/*", a.SwaggerHandler())

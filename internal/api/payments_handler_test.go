@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -30,25 +31,25 @@ func newTestRouter(svc PaymentsService) *chi.Mux {
 // Behaviour is configured via the function fields; calls are recorded so tests
 // can assert how the handler invoked the service.
 type mockPaymentsService struct {
-	getPaymentFunc    func(id string) *models.PaymentResponse
-	createPaymentFunc func(req models.PostPaymentRequest) (*models.PaymentResponse, error)
+	getPaymentFunc    func(ctx context.Context, id string) *models.PaymentResponse
+	createPaymentFunc func(ctx context.Context, req models.PostPaymentRequest) (*models.PaymentResponse, error)
 
 	getPaymentCalls    []string
 	createPaymentCalls []models.PostPaymentRequest
 }
 
-func (m *mockPaymentsService) GetPayment(id string) *models.PaymentResponse {
+func (m *mockPaymentsService) GetPayment(ctx context.Context, id string) *models.PaymentResponse {
 	m.getPaymentCalls = append(m.getPaymentCalls, id)
 	if m.getPaymentFunc != nil {
-		return m.getPaymentFunc(id)
+		return m.getPaymentFunc(ctx, id)
 	}
 	return nil
 }
 
-func (m *mockPaymentsService) CreatePayment(req models.PostPaymentRequest) (*models.PaymentResponse, error) {
+func (m *mockPaymentsService) CreatePayment(ctx context.Context, req models.PostPaymentRequest) (*models.PaymentResponse, error) {
 	m.createPaymentCalls = append(m.createPaymentCalls, req)
 	if m.createPaymentFunc != nil {
-		return m.createPaymentFunc(req)
+		return m.createPaymentFunc(ctx, req)
 	}
 	return nil, nil
 }
@@ -65,7 +66,7 @@ func TestGetPaymentHandler(t *testing.T) {
 			Amount:             100,
 		}
 		svc := &mockPaymentsService{
-			getPaymentFunc: func(id string) *models.PaymentResponse { return payment },
+			getPaymentFunc: func(ctx context.Context, id string) *models.PaymentResponse { return payment },
 		}
 
 		req := httptest.NewRequest(http.MethodGet, "/api/payments/test-id", nil)
@@ -85,7 +86,7 @@ func TestGetPaymentHandler(t *testing.T) {
 
 	t.Run("Payment not found", func(t *testing.T) {
 		svc := &mockPaymentsService{
-			getPaymentFunc: func(id string) *models.PaymentResponse { return nil },
+			getPaymentFunc: func(ctx context.Context, id string) *models.PaymentResponse { return nil },
 		}
 
 		req := httptest.NewRequest(http.MethodGet, "/api/payments/NonExistingID", nil)
@@ -113,7 +114,7 @@ func postPayment(svc PaymentsService, body []byte) *httptest.ResponseRecorder {
 func TestPostPaymentHandler(t *testing.T) {
 	t.Run("Service rejects the payment", func(t *testing.T) {
 		svc := &mockPaymentsService{
-			createPaymentFunc: func(req models.PostPaymentRequest) (*models.PaymentResponse, error) {
+			createPaymentFunc: func(ctx context.Context, req models.PostPaymentRequest) (*models.PaymentResponse, error) {
 				return nil, &service.RejectedError{Reason: "card number is required"}
 			},
 		}
@@ -145,7 +146,7 @@ func TestPostPaymentHandler(t *testing.T) {
 			Amount:             100,
 		}
 		svc := &mockPaymentsService{
-			createPaymentFunc: func(req models.PostPaymentRequest) (*models.PaymentResponse, error) {
+			createPaymentFunc: func(ctx context.Context, req models.PostPaymentRequest) (*models.PaymentResponse, error) {
 				return authorised, nil
 			},
 		}

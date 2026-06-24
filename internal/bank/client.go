@@ -4,8 +4,10 @@ package bank
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -31,7 +33,7 @@ func NewClient(baseURL string) *Client {
 // and reports whether it was authorized. An error is returned when the bank
 // cannot be reached or responds with an unexpected status, so the caller can
 // distinguish a declined payment from a failed call.
-func (c *Client) Authorize(req models.PostPaymentRequest) (bool, error) {
+func (c *Client) Authorize(ctx context.Context, req models.PostPaymentRequest) (bool, error) {
 	body, err := json.Marshal(models.AuthorizationRequest{
 		CardNumber: req.CardNumber,
 		ExpiryDate: fmt.Sprintf("%02d/%d", req.ExpiryMonth, req.ExpiryYear),
@@ -43,11 +45,25 @@ func (c *Client) Authorize(req models.PostPaymentRequest) (bool, error) {
 		return false, fmt.Errorf("encoding acquiring bank request: %w", err)
 	}
 
-	resp, err := c.httpClient.Post(c.baseURL+"/payments", "application/json", bytes.NewReader(body))
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/payments", bytes.NewReader(body))
+	if err != nil {
+		return false, fmt.Errorf("building acquiring bank request: %w", err)
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	start := time.Now()
+	resp, err := c.httpClient.Do(httpReq)
 	if err != nil {
 		return false, fmt.Errorf("calling acquiring bank: %w", err)
 	}
 	defer resp.Body.Close()
+
+	// Latency and status only — the request body carries the card number and
+	// CVV, which must never be logged (PCI-DSS).
+	slog.InfoContext(ctx, "acquiring bank responded",
+		"status", resp.StatusCode,
+		"duration_ms", time.Since(start).Milliseconds(),
+	)
 
 	if resp.StatusCode != http.StatusOK {
 		return false, fmt.Errorf("acquiring bank returned unexpected status %d", resp.StatusCode)

@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/cko-recruitment/payment-gateway-challenge-go/internal/models"
@@ -16,7 +17,7 @@ import (
 func (a *Api) GetPaymentHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := chi.URLParam(r, "id")
-		payment := a.paymentsService.GetPayment(id)
+		payment := a.paymentsService.GetPayment(r.Context(), id)
 
 		if payment == nil {
 			w.WriteHeader(http.StatusNotFound)
@@ -44,16 +45,20 @@ func (a *Api) PostPaymentHandler() http.HandlerFunc {
 			return
 		}
 
-		payment, err := a.paymentsService.CreatePayment(req)
+		payment, err := a.paymentsService.CreatePayment(r.Context(), req)
 		if err != nil {
 			var rejected *service.RejectedError
 			if errors.As(err, &rejected) {
+				slog.WarnContext(r.Context(), "payment rejected", "reason", rejected.Reason)
 				writeJSON(w, http.StatusBadRequest, models.PostPaymentErrorResponse{
 					PaymentStatus: models.PaymentStatusRejected,
 					Error:         rejected.Reason,
 				})
 				return
 			}
+			// An unexpected failure (e.g. the acquiring bank is unreachable): log
+			// the cause for operators, but don't leak internals to the caller.
+			slog.ErrorContext(r.Context(), "payment processing failed", "error", err)
 			writeJSON(w, http.StatusInternalServerError, models.PostPaymentErrorResponse{
 				PaymentStatus: models.PaymentStatusRejected,
 				Error:         "could not process payment",
