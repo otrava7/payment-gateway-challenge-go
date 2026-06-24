@@ -27,28 +27,12 @@ func NewClient(baseURL string) *Client {
 	}
 }
 
-// authorizationRequest is the acquiring bank's expected request body. It differs
-// from our domain model: the expiry is a single "MM/YYYY" string.
-type authorizationRequest struct {
-	CardNumber string `json:"card_number"`
-	ExpiryDate string `json:"expiry_date"`
-	Currency   string `json:"currency"`
-	Amount     int    `json:"amount"`
-	Cvv        string `json:"cvv"`
-}
-
-// authorizationResponse is the acquiring bank's response body.
-type authorizationResponse struct {
-	Authorized        bool   `json:"authorized"`
-	AuthorizationCode string `json:"authorization_code"`
-}
-
 // Authorize sends a (already validated) payment request to the acquiring bank
 // and reports whether it was authorized. An error is returned when the bank
 // cannot be reached or responds with an unexpected status, so the caller can
 // distinguish a declined payment from a failed call.
 func (c *Client) Authorize(req models.PostPaymentRequest) (bool, error) {
-	body, err := json.Marshal(authorizationRequest{
+	body, err := json.Marshal(models.AuthorizationRequest{
 		CardNumber: req.CardNumber,
 		ExpiryDate: fmt.Sprintf("%02d/%d", req.ExpiryMonth, req.ExpiryYear),
 		Currency:   req.Currency,
@@ -69,7 +53,7 @@ func (c *Client) Authorize(req models.PostPaymentRequest) (bool, error) {
 		return false, fmt.Errorf("acquiring bank returned unexpected status %d", resp.StatusCode)
 	}
 
-	var decoded authorizationResponse
+	var decoded models.AuthorizationResponse
 	if err := json.NewDecoder(resp.Body).Decode(&decoded); err != nil {
 		return false, fmt.Errorf("decoding acquiring bank response: %w", err)
 	}
